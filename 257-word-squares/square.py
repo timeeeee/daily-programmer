@@ -5,8 +5,9 @@ characters for that row and column.
 """
 
 from copy import deepcopy
+from string import lowercase
 
-from trie import Trie
+from trie import Trie, can_spell
 
 DICT_FILE = "enable1.txt"
 
@@ -66,12 +67,63 @@ remember counts for the whole alphabet, not a string. MAY AS WELL DO THIS IN C.
 """
 
 
+class CharCount(object):
+    def __init__(self, string=""):
+        self.counts = [0 for _ in xrange(26)]
+        for char in string.lower():
+            if char not in lowercase:
+                raise ValueError("'{}' contains non-character '{}'".format(
+                    string, char))
+            self.counts[ord(char) - 97] += 1
+
+    def __getitem__(self, key):
+        key = key.lower()
+        if key not in lowercase:
+            raise KeyError("'{}' not a character".format(key))
+        return self.counts[ord(key) - 97]
+
+    def __setitem__(self, key, value):
+        key = key.lower()
+        if key not in lowercase:
+            raise KeyError("'{}' not a character".format(key))
+        self.counts[ord(key) - 97] = value
+
+    def __gt__(self, other):
+        return all(a >= b for a, b in zip(self.counts, other.counts))
+
+    def can_spell(self, word):
+        return (self > CharCount(word))
+
+    def __str__(self):
+        key_values = ", ".join(
+            "'{}': {}".format(key, value)
+            for key, value in zip(lowercase, self.counts))
+        return "{{{}}}".format(key_values)
+
+    def subtract_word(self, word):
+        for char in word.lower():
+            self[char] -= 1
+
+    def __sub__(self, word):
+        new_counts = CharCount()
+        new_counts.counts = list(self.counts)
+        for char in word.lower():
+            new_counts[char] -= 1
+        return new_counts
+
+
 def guess_words(words_so_far, trie, word_list, char_counts_left):
     if len(words_so_far) == len(words_so_far[0]):
         # Done!
         return [words_so_far]
 
-    pass
+    # guess one word at a time from the word list, checking to see if it's
+    # a viable word with the characters left
+    filtered_word_list = []
+    for word in word_list:
+        if char_counts_left.can_spell(word):
+            filtered_word_list.append(word)
+            
 
 
 def make_square(string):
