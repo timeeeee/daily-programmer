@@ -31,4 +31,4 @@ def replace_flo(flo):
 
 
 if __name__ == "__main__":
-    print "".join(replace_flo(stdin))
+    print replace_flo(stdin)
