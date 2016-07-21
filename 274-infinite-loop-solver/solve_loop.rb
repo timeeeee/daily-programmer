@@ -28,19 +28,25 @@ Base case is any valid rotation of the final (bottom right) tile.
 class Board
   def initialize filename
     @grid = open(filename).map do |line|
-      line.split.map { |bitmask| Tile.new bitmask }
+      line.split.map { |bitmask| Tile.new bitmask.to_i }
     end
   end
 
-  def solve pos=[0, 0]
+  def solve steps=false, pos=[0, 0]
     row, col = pos
     tile = @grid[row][col]
     tile.possible_rotations.times do
+      puts self, "\n" if steps
       if check row, col
         if last_tile? row, col
-          puts self
+          if steps
+            abort
+          else
+            puts self
+            puts
+          end
         else
-          solve next_tile(pos)
+          solve steps, next_tile(pos)
         end
       end
       tile.rotate
@@ -58,16 +64,22 @@ class Board
 
   def check row, col
     # Are all of the pipes connected?
+
     tile = @grid[row][col]
 
     # If a pipe leads upwards, we must have a neighbor that is connected down
     if tile.connected? :up
-      return false if row == 0 or not grid[row - 1][col].connected? :down
+      return false if row == 0 or not @grid[row - 1][col].connected? :down
+    else
+      # Otherwise, make sure there's no pipe coming downwards
+      return false if row > 0 and @grid[row - 1][col].connected? :down
     end
 
     # If a pipe leads left, we must have a neighbor that is connected right
     if tile.connected? :left
-      return false if col == 0 or not grid[row][col - 1].connected? :right
+      return false if col == 0 or not @grid[row][col - 1].connected? :right
+    else
+      return false if col > 0 and @grid[row][col - 1].connected? :right
     end
 
     # For right and downwards neighbors, we will check their connections later.
@@ -99,12 +111,22 @@ class Board
   def size
     [width, height]
   end
+
+  def to_s
+    array = @grid.map do |row|
+      row.map { |tile| tile.to_s }
+      row.join
+    end
+    array.join "\n"
+  end
 end
 
 
 class Tile
   @@directions = {:up => 0, :right => 1, :down => 2, :left => 3}
   @@rotation_counts = {0 => 1, 15 => 1, 5 => 2, 10 => 2}
+  @@codepoints = [32, 9593, 9594, 9495, 9595, 9475, 9487, 9507, 9592, 9499,
+                  9473, 9531, 9491, 9515, 9523, 9547].pack "U*"
 
   def initialize bitmask
     # up: 1, right: 2, down: 4, left: 8
@@ -118,8 +140,7 @@ class Tile
   end
 
   def connected? direction
-    mask = 2**(@@directions[direction] + @rotations % 4)
-    puts mask
+    mask = 2**((@@directions[direction] + @rotations) % 4)
     @bitmask & mask > 0
   end
 
@@ -134,15 +155,32 @@ class Tile
   def possible_rotations
     @@rotation_counts[@bitmask]
   end
+
+  def bitmask
+    mask = 0
+    @@directions.each_pair do |token, int|
+      if connected? token
+        mask += 2**int
+      end
+    end
+    mask
+  end
+
+  def to_s
+    @@codepoints[bitmask]
+  end
 end
 
 def debug
   board = Board.new "board.txt"
   width, height = board.size  
-  (0..height).each do |row|
-    (0..width).each do |col|
+  (0..height - 1).each do |row|
+    (0..width - 1).each do |col|
       check = board.check row, col
       puts "row = #{row}, col = #{col}: #{check}"
     end
   end
 end
+
+board = Board.new "big.txt"
+board.solve true
